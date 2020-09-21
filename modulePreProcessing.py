@@ -7,7 +7,7 @@ from tsfresh import select_features
 
 class ScalingMethods:
     
-    def useMinMax(dataset, ignoredFields):
+    def useMinMax(self, dataset, ignoredFields):
         '''
         TODO να γίνεται το hstack με τα index των ignored αυτόματα
         '''
@@ -37,7 +37,7 @@ class FeatureEngineeringAndSelectionMethods:
     μόνο με τα features που έχουν άμεση σχέση με τα features ενός round
     συν τα gsId και gsTime που είναι απαραίτητα για time series ανάλυση
     '''
-    def getDatasetForTsAnalysis(dataset):
+    def getDatasetForTsAnalysis(self, dataset):
         datasetForTsAnalysis = dataset[['gsId',
                                         'gsTime',
                                         'total_rounds_in_session', 
@@ -53,7 +53,7 @@ class FeatureEngineeringAndSelectionMethods:
     Δεν επιστρέφει τα input features
     Δεν επιστρέφει column_id και column_sort
     '''
-    def extractFeaturesUsingTsFresh(datasetForTsAnalysis):
+    def extractFeaturesUsingTsFresh(self, datasetForTsAnalysis):
         datasetWithTsExtractedFeatures = extract_features(datasetForTsAnalysis, column_id='gsId', column_sort='gsTime')
         
         # drop 100% nan features
@@ -62,13 +62,13 @@ class FeatureEngineeringAndSelectionMethods:
         
         return datasetWithTsExtractedFeaturesNoNan
 
-    def selectFeaturesUsingTsFresh(df):
+    def selectFeaturesUsingTsFresh(self, df):
         df = df.set_index('gsId')
         # auto feature selection. h target class epistrefei sth thesi 0.
         newDf = select_features(df, df.iloc[:,df.columns.get_loc('target_class')], fdr_level=0.05)
         return newDf
     
-    def removeLowVarianceFeatures(df, thresholdValue):
+    def removeLowVarianceFeatures(self, df, thresholdValue):
         # Αφαιρώ manually το target class γιατί δεν θέλω να εμπλακεί στην αφαίρεση στηλών με βάση το variance
         selectedFsNoTargetClass = df.drop(['target_class'], axis=1)
         
