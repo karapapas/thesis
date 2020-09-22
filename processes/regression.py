@@ -11,7 +11,11 @@ tnCi = TrainingMethods()
 df = ldCi.connectAndFetch("127.0.0.1", "mci_db", "root", "toor", "SELECT * FROM v7")
 df = ldCi.separateTargetClass(df, "moca_pre_init")
 
-# initial scaling. just to avoid NAN in TS feature extraction
+'''
+Κάνω scaling, βάζοντας range=(0.1, 0.9), πριν χρησιμοποιήσω την TSFresh,
+με σκοπό να αποφύγω τις μηδενικές τιμές στα data μου,
+oι οποίες θα οδηγούσαν σε NaN τιμές στα extracted features.
+'''
 df = scCi.useMinMax(df, ['gsId', 'gsTime'])
 
 # select features to apply TS feature extraction

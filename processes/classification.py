@@ -3,6 +3,10 @@ from modulePreProcessing import ScalingMethods
 from modulePreProcessing import FeatureEngineeringAndSelectionMethods
 from moduleModelTraining import TrainingMethods
 
+from sklearn.preprocessing import MinMaxScaler
+import numpy as np
+import pandas as pd
+
 ldCi = LoadingMethods()
 scCi = ScalingMethods()
 fsCi = FeatureEngineeringAndSelectionMethods()
@@ -11,9 +15,15 @@ tnCi = TrainingMethods()
 df = ldCi.connectAndFetch("127.0.0.1", "mci_db", "root", "toor", "SELECT * FROM v7")
 df = ldCi.separateTargetClass(df, "moca_pre_cutoff_binned")
 
-# initial scaling. just to avoid NAN in TS feature extraction
-ignoredFields = ['gsId', 'gsTime', 'target_class']
-df = scCi.useMinMax(df, ignoredFields)
+'''
+Κάνω scaling, βάζοντας range=(0.1, 0.9), πριν χρησιμοποιήσω την TSFresh,
+με σκοπό να αποφύγω τις μηδενικές τιμές στα data μου,
+oι οποίες θα οδηγούσαν σε NaN τιμές στα extracted features.
+Επίσης για το classification και μόνο εξαιρώ την target_class, γιατί οι 
+classifiers δουλεύουν μόνο με διακρυτές και όχι συνεχείς τιμές.
+'''
+columnsToIgnoreList = ['gsId', 'gsTime', 'target_class']
+df = scCi.useMinMax(df, columnsToIgnoreList)
 
 # select features to apply TS feature extraction
 dfForTsAnalysis = fsCi.getDatasetForTsAnalysis(df)
@@ -31,7 +41,7 @@ dfComplete = df.join(dfWithTsFeatures, on='gsId')
 '''
 Κάνω ξανά scaling, αυτή τη φορά για τα features από το TsFresh
 '''
-dfAllScaled = scCi.useMinMax(dfComplete, ignoredFields)
+dfAllScaled = scCi.useMinMax(dfComplete, columnsToIgnoreList)
 
 
 '''
@@ -58,4 +68,4 @@ Model Training
 Θ΄΄ελω ένα dataframe το οποίο να έχει το target_class και να μην έχει το gsId και gsTime
 Για να προχωρήσω με το splitting και την εκπαίδευση του μοντέλου
 '''
-model = tnCi.trainLinearRegressionModel(dfVarianceFiltered,  ['accuracy', 'roc_auc'])
+model = tnCi.trainClassificationModel(dfVarianceFiltered,  ['accuracy', 'roc_auc'])

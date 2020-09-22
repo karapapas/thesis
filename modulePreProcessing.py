@@ -7,28 +7,26 @@ from tsfresh import select_features
 
 class ScalingMethods:
     
-    def useMinMax(self, dataset, ignoredFields):
-        '''
-        TODO να γίνεται το hstack με τα index των ignored αυτόματα
-        '''
-        # minMaxScaler = MinMaxScaler(feature_range=(0.1, 0.9))
+    def useMinMax(self, df, columnsToIgnoreList):
+        allColumnsList = pd.Series(df.columns.array).values.tolist()
+        columnsToScaleList = [x for x in allColumnsList if x not in columnsToIgnoreList]
         
-        # columnsToScale = pd.Series(dataset.columns.array).values.tolist()
-        # for i in ignoredFields:
-        #     try:
-        #         columnsToScale.remove(i)
-        #     except:
-        #         pass
+        # partition dataframe
+        dfPartToScale = df[columnsToScaleList]
+        dfPartToIgnore = df[columnsToIgnoreList]
         
-        # # I will normalize every feature, including target class, except ignored fields
-        # scaledMatrix = minMaxScaler.fit_transform(dataset[columnsToScale].values)
- 
-        # # concatenate session id and session starting time before recreating dataframe
-        # scaledMatrixComplete = np.hstack((dataset.iloc[:,0:2].values, scaledMatrix))
+        # instanciate scaler
+        minMaxScaler = MinMaxScaler(feature_range=(0.1, 0.9))
         
-        # # recreate dataframe
-        # dataset = pd.DataFrame(scaledMatrixComplete, index=dataset.index, columns=dataset.columns)
-        # return dataset
+        # run scaler on the df part we want to scale
+        scaledMatrix = minMaxScaler.fit_transform(dfPartToScale.values)
+        
+        # recreate df
+        dfScaledPart = pd.DataFrame(scaledMatrix, index=dfPartToScale.index, columns=dfPartToScale.columns)
+        
+        # concat ignored columns and scaled columns to one df
+        dfAfterScaling = pd.concat([dfPartToIgnore, dfScaledPart], axis=1, ignore_index=False)
+        return dfAfterScaling
     
 class FeatureEngineeringAndSelectionMethods:
     

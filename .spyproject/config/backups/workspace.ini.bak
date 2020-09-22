@@ -6,5 +6,5 @@ save_non_project_files = False
 
 [main]
 version = 0.2.0
-recent_files = ['moduleLoading.py', 'modulePreProcessing.py', 'moduleMetrics.py', 'moduleModelTraining.py', 'processes\\regression.py', 'processes\\classification.py']
+recent_files = ['processes\\classification.py', 'modulePreProcessing.py']
 
