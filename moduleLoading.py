@@ -13,9 +13,11 @@ class LoadingMethods:
         cnx.close()
         return dataset
     
-    def separateTargetClass(self, dataset, targetClass):
-        dataset = dataset.rename(columns={targetClass:"target_class"})
-        for i in dataset.columns.array: 
+    def separateTargetClass(self, df, targetClass):
+        df = df.rename(columns={targetClass:"target_class"})
+        for i in df.columns.array: 
             if(re.search('(^mmse_|^moca_)', i)):
-                dataset = dataset.drop([i], axis=1)
-        return dataset
+                df = df.drop([i], axis=1)
+        df = df.set_index('gsId', drop = False)
+        self.df=df
+        return df
