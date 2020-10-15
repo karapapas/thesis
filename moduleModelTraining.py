@@ -14,7 +14,31 @@ from sklearn.metrics import plot_roc_curve
 
 metricsCi = MetricsMethods()
 
+
 class TrainingMethods:
+
+    # takes a dictionary of classifiers and a X,y train set
+    # returns a dictionary of trained models
+    @staticmethod
+    def train_models(clfs, x_train, y_train):
+
+        # train classifiers
+        clfs_trained = {
+            'lr': clfs.get('lr').fit(x_train, y_train),
+            'dt': clfs.get('dt').fit(x_train, y_train),
+            'rf': clfs.get('rf').fit(x_train, y_train),
+            'ce': clfs.get('ce').fit(x_train, y_train)
+        }
+
+        # trained and named # TODO Auto create of this dictionary with for loop
+        clfs_rdy = {
+            "Logistic Regression": clfs_trained.get('lr'),
+            "Decision Tree": clfs_trained.get('dt'),
+            "Random Forest": clfs_trained.get('rf'),
+            "Custom Ensemble": clfs_trained.get('ce')
+        }
+
+        return clfs_rdy
     
     def trainLinearRegressionModel(self, df, metrics):
         # entries of the target class
@@ -70,7 +94,7 @@ class TrainingMethods:
         '''plots end'''
         
         return model
-    
+
     def trainClassificationModel(self, df, mustIgnore, mustInclude, metrics):
         
         # target class entries
