@@ -2,22 +2,21 @@ import re
 import pandas as pd
 import mysql.connector
 
-class LoadingMethods:
-    
-    # def __init__(self, testVar):
-    #     self.testVar = testVar
 
-    def connectAndFetch(self, dbHost, dbName, dbUser, dbPass, selectClause):
-        cnx = mysql.connector.connect(user=dbUser, password=dbPass, host=dbHost, database=dbName)
-        dataset = pd.read_sql(selectClause, cnx)
+class LoadingMethods:
+
+    @staticmethod
+    def connect_and_fetch(db_host, db_name, db_user, db_pass, select_clause):
+        cnx = mysql.connector.connect(user=db_user, password=db_pass, host=db_host, database=db_name)
+        df = pd.read_sql(select_clause, cnx)
         cnx.close()
-        return dataset
-    
-    def separateTargetClass(self, df, targetClass):
-        df = df.rename(columns={targetClass:"target_class"})
-        for i in df.columns.array: 
-            if(re.search('(^mmse_|^moca_)', i)):
+        return df
+
+    @staticmethod
+    def separate_target_class(df, target_class):
+        df = df.rename(columns={target_class: "target_class"})
+        for i in df.columns.array:
+            if re.search('(^mmse_|^moca_)', i):
                 df = df.drop([i], axis=1)
-        df = df.set_index('gsId', drop = False)
-        self.df=df
+        df = df.set_index('gsId', drop=False)
         return df

@@ -262,3 +262,20 @@ param_grid = dict(features__pca__n_components=[1, 2, 3],
 grid_search = GridSearchCV(pipeline, param_grid=param_grid, verbose=10)
 grid_search.fit(X, y)
 print(grid_search.best_estimator_)
+
+# simple model creation
+# results = model_LR.score(X_test, y_test)
+# print("Accuracy on test set: %.3f%% (%.3f%%)" % (results.mean()*100.0, results.std()*100.0))
+# kfold = KFold(n_splits=10)
+# kfold = StratifiedKFold(n_splits=10)
+# results = cross_val_score(model_LR, df[ff], y, cv=kfold)
+# print("Accuracy: %.3f%% (%.3f%%)" % (results.mean()*100.0, results.std()*100.0))
+
+# save model for service
+# pathFileName = 'models/classification/' + target_class + '.joblib'
+# print(type(model))
+# dump(model, pathFileName)
+# with open(pathFileName, 'wb') as f:
+# dump(object, f)
+# pkl.dump(object, f)
+

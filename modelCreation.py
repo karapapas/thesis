@@ -27,13 +27,13 @@ select = FeatureSelectionMethods()
 train = TrainingMethods()
 
 # connect to db and fetch data
-df = load.connectAndFetch("127.0.0.1", "mci_db", "root", "toor", "SELECT * FROM v7")
+df = load.connect_and_fetch("127.0.0.1", "mci_db", "root", "toor", "SELECT * FROM v7")
 # bxplot = df.boxplot(column=["total_rounds_in_session"])
 # plt.show()
 
 
 # define target class
-df = load.separateTargetClass(df, "moca_pre_binary_binned")
+df = load.separate_target_class(df, "moca_pre_binary_binned")
 
 # define features by type and encoding method
 # categorical for one-hot

@@ -18,16 +18,17 @@ def boxplot_features(dataframe, title):
 
 class ScalingMethods:
 
-    def handle_outliers(self, df):
+    @staticmethod
+    def handle_outliers(df):
         boxplot_features(df, 'Before removing outliers')
 
         for feature in df.columns:
             if re.search('(^total_)', feature):
-                max_val = np.percentile(df[feature], 95)
+                max_val = np.percentile(df[feature], 99.25)
                 q3_val = np.percentile(df[feature], 75)
                 df.loc[(df[feature] > max_val), feature] = q3_val
             elif re.search('(^avg_)', feature):
-                max_val = np.percentile(df[feature], 95)
+                max_val = np.percentile(df[feature], 99.25)
                 mean_val = df[feature].mean()
                 df.loc[(df[feature] > max_val), feature] = mean_val
 
@@ -97,33 +98,33 @@ class FeatureEngineeringMethods:
 
 class FeatureSelectionMethods:
 
-    def removeLowVarianceFeatures(self, df, thresholdValue):
-        for i, v in df.var().items():
+    @staticmethod
+    def remove_low_variance_features(df, thresholdValue):
+
+        # exclude target, time and id from the process
+        selectedFsNoTargetClass = df.drop(['target_class', 'gsId', 'gsStartTime'], axis=1)
+        for i, v in selectedFsNoTargetClass.var().sort_values(ascending=False).items():
             print(i, round(float(v), 1))
 
-        # Αφαιρώ manually το target class γιατί δεν θέλω να εμπλακεί στην αφαίρεση στηλών με βάση το variance
-        selectedFsNoTargetClass = df.drop(['target_class', 'gsId', 'gsStartTime'], axis=1)
-        # self.selectedFsNoTargetClass = selectedFsNoTargetClass
-        dfColumnsToFilter = df.columns
+        dfColumnsToRuleOut = df.columns
 
         # function that calculates threshold th = (.9 * (1 - .9))
         selector = VarianceThreshold(threshold=thresholdValue)
         selectedFeaturesMatrix = selector.fit_transform(selectedFsNoTargetClass)
-        # self.selectedFeaturesMatrix = selectedFeaturesMatrix
 
         # Query selector για να πάρω τα indices από τα επιλεγμένα features για να μπορέσω να κατασκευάσω ξανά dataframe
         selectedFeaturesIndices = selector.get_support(indices=True)
 
         # Ανακατασκευάζω το dataframe
         dfToReturn = pd.DataFrame(selectedFeaturesMatrix, index=selectedFsNoTargetClass.index, columns=selectedFsNoTargetClass.iloc[:,selectedFeaturesIndices].columns)
-        # self.dfToReturn = dfToReturn
+
         # Προσθέτω ξανά το target class
         # dfToReturn = pd.concat([dfToReturn, df[['target_class']]], axis=1, ignore_index=False)
         dfToReturn = dfToReturn.join(df[['target_class', 'gsId', 'gsStartTime']], how='inner')
 
         dfColumnsFiltered = dfToReturn.columns
-        featuresRuledOut = [x for x in dfColumnsToFilter if x not in dfColumnsFiltered]
-        print("Threshold value ", thresholdValue)
+        featuresRuledOut = [x for x in dfColumnsToRuleOut if x not in dfColumnsFiltered]
+        print("Threshold value ", round(float(thresholdValue), 2))
         print("Features ruled out ", featuresRuledOut)
         return dfToReturn
 
