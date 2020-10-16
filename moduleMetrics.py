@@ -2,8 +2,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import cross_val_score
-from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, confusion_matrix
-
+from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, confusion_matrix, plot_precision_recall_curve
 
 class MetricsMethods:
 
@@ -12,6 +11,7 @@ class MetricsMethods:
     def generate_metrics(models, x_test, y_test, metrics, show_raw_data, ):
 
         roc_axes = None     # for roc curves
+        pr_axes = None      # for precision recall curves
         cf_matrix = dict.fromkeys(models.keys())    # for confusion matrix
 
         # for idx, model in enumerate(models):
@@ -30,10 +30,17 @@ class MetricsMethods:
 
             # plot roc curves
             if idx == 0:
-                display = plot_roc_curve(model, x_test, y_test)
-                roc_axes = display.ax_
+                display_roc = plot_roc_curve(model, x_test, y_test)
+                roc_axes = display_roc.ax_
             else:
                 plot_roc_curve(model, x_test, y_test, ax=roc_axes)
+
+            # plot precision recall curves
+            if idx == 0:
+                display_pr = plot_precision_recall_curve(model, x_test, y_test)
+                pr_axes = display_pr.ax_
+            else:
+                plot_precision_recall_curve(model, x_test, y_test, ax=pr_axes)
 
             # plot confusion matrix
             # based on the example at https://stackoverflow.com/questions/61825227/
