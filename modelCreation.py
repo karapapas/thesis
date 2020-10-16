@@ -1,6 +1,6 @@
 # imports
 from moduleLoading import LoadingMethods
-from modulePreProcessing import ScalingMethods, FeatureEngineeringMethods, FeatureSelectionMethods
+from modulePreProcessing import ScalingMethods, FeatureMethods
 from moduleModelTraining import TrainingMethods
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, KBinsDiscretizer
@@ -22,8 +22,7 @@ from sklearn.feature_selection import VarianceThreshold
 # class instances
 load = LoadingMethods()
 scale = ScalingMethods()
-create = FeatureEngineeringMethods()
-select = FeatureSelectionMethods()
+features = FeatureMethods()
 train = TrainingMethods()
 
 # connect to db and fetch data
@@ -68,7 +67,7 @@ X, y = oversample.fit_resample(X, y)
 # X = select.removeBasedOnVariance(X, 0.15)
 # X.columns
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=7)
 
 categorical_pipe = Pipeline([
     ('onehot', OneHotEncoder(handle_unknown='ignore')),
@@ -89,7 +88,7 @@ preprocessingEncoding = ColumnTransformer([
 
 pl = Pipeline([
     ('enc', preprocessingEncoding),
-    # ('classifier', RandomForestClassifier(random_state=42))
+    # ('classifier', RandomForestClassifier(random_state=7))
     ('classifier', LogisticRegression(random_state=7))
 ])
 

@@ -1,12 +1,14 @@
 import re
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.feature_selection import VarianceThreshold
-from tsfresh import extract_features
-from tsfresh import select_features
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.inspection import permutation_importance
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.feature_selection import VarianceThreshold
+from tsfresh import extract_features, select_features
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 
 
 def boxplot_features(dataframe, title):
@@ -35,7 +37,7 @@ class ScalingMethods:
         boxplot_features(df, 'After removing outliers')
         return df
 
-    def useMinMax(self, df, columnsToIgnoreList):
+    def use_min_max(self, df, columnsToIgnoreList):
         boxplot_features(df, 'Before Scaling')
         allColumnsList = pd.Series(df.columns.array).values.tolist()
         columnsToScaleList = [x for x in allColumnsList if x not in columnsToIgnoreList]
@@ -58,7 +60,105 @@ class ScalingMethods:
         boxplot_features(dfAfterScaling, 'After Scaling')
         return dfAfterScaling
 
-class FeatureEngineeringMethods:
+
+class FeatureMethods:
+
+    @staticmethod
+    def remove_low_variance_features(df, thresholdValue):
+
+        # exclude target, time and id from the process
+        selectedFsNoTargetClass = df.drop(['target_class', 'gsId', 'gsStartTime'], axis=1)
+        variance = selectedFsNoTargetClass.var().sort_values(ascending=False)
+        sns.barplot(variance.values, variance.index, palette="Set3")
+        for i, v in variance.items():
+            print(i, round(float(v), 1))
+
+        dfColumnsToRuleOut = df.columns
+
+        # function that calculates threshold th = (.9 * (1 - .9))
+        selector = VarianceThreshold(threshold=thresholdValue)
+        selectedFeaturesMatrix = selector.fit_transform(selectedFsNoTargetClass)
+
+        # Query selector για να πάρω τα indices από τα επιλεγμένα features για να μπορέσω να κατασκευάσω ξανά dataframe
+        selectedFeaturesIndices = selector.get_support(indices=True)
+
+        # Ανακατασκευάζω το dataframe
+        dfToReturn = pd.DataFrame(selectedFeaturesMatrix, index=selectedFsNoTargetClass.index, columns=selectedFsNoTargetClass.iloc[:, selectedFeaturesIndices].columns)
+
+        # Προσθέτω ξανά το target class
+        # dfToReturn = pd.concat([dfToReturn, df[['target_class']]], axis=1, ignore_index=False)
+        dfToReturn = dfToReturn.join(df[['target_class', 'gsId', 'gsStartTime']], how='inner')
+
+        dfColumnsFiltered = dfToReturn.columns
+        featuresRuledOut = [x for x in dfColumnsToRuleOut if x not in dfColumnsFiltered]
+        print("Threshold value: ", round(float(thresholdValue), 2))
+        print("Features ruled out: \n", featuresRuledOut)
+        return dfToReturn
+
+    # takes a dataframe
+    # plots feature importance (MDI) using Random Forest Classifier
+    # plots feature permutation importance
+    # based on examples:
+    # https://scikit-learn.org/stable/auto_examples/inspection/plot_permutation_importance.html
+    # https://scikit-learn.org/stable/auto_examples/inspection/plot_permutation_importance_multicollinear.html
+    # related papers:
+    # Gilles Louppe, Understanding variable importances in forests of randomized trees
+    # TODO include a random feature
+    @staticmethod
+    def inspection_using_classifier(df, features):
+
+        # independent variables
+        x = df[features]
+
+        # target class
+        target_class_index = df.columns.get_loc('target_class')
+        y = df.iloc[:, target_class_index]
+
+        # Split dataset to select feature and evaluate the classifier
+        X_train, X_test, y_train, y_test = train_test_split(x, y, stratify=y, random_state=7)
+
+        clf = RandomForestClassifier(max_depth=3, n_estimators=5, random_state=7)
+        clf.fit(X_train, y_train)
+        # results = clf.score(X_test, y_test)
+        # print("Accuracy on test set: %.3f%% (%.3f%%)" % (results.mean() * 100.0, results.std() * 100.0))
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+
+        feature_names = x.columns
+        tree_importance_sorted_idx = np.argsort(clf.feature_importances_)
+
+        y_ticks = x.columns.to_numpy()  # pandas.core.indexes.base.Index to numpy.ndarray
+        tree_indices = np.arange(0, len(feature_names))
+
+        ax1.set_title("Random Forest Feature Importance (MDI)")
+        ax1.barh(y_ticks, clf.feature_importances_[tree_importance_sorted_idx], height=0.7, align='center')
+        ax1.set_yticklabels(feature_names[tree_importance_sorted_idx])
+        ax1.set_yticks(y_ticks)
+        ax1.set_ylim((-0.5, len(clf.feature_importances_) - 0.5))
+
+        result = permutation_importance(clf, X_test, y_test, n_repeats=10, random_state=7)
+        perm_sorted_idx = result.importances_mean.argsort()
+        ax2.set_title("Permutation Importance")
+        ax2.boxplot(result.importances[perm_sorted_idx].T, vert=False, labels=feature_names[perm_sorted_idx])
+
+        fig.tight_layout()
+        plt.show()
+
+
+    def removeBasedOnVariance(self, df, thresholdValue):
+
+        selector = VarianceThreshold(threshold=thresholdValue)
+        selectedFeaturesMatrix = selector.fit_transform(df)
+        # self.selectedFeaturesMatrix = selectedFeaturesMatrix
+
+        # Query selector για να πάρω τα indices από τα επιλεγμένα features για να μπορέσω να κατασκευάσω ξανά dataframe
+        selectedFeaturesIndices = selector.get_support(indices=True)
+
+        # Ανακατασκευάζω το dataframe
+        df = pd.DataFrame(selectedFeaturesMatrix, index=df.index,
+                                  columns=df.iloc[:, selectedFeaturesIndices].columns)
+        # self.dfToReturn = df
+        return df
 
     '''
     Επιστρέφει ένα νέο dataframe 
@@ -95,50 +195,3 @@ class FeatureEngineeringMethods:
         # auto feature selection. h target class epistrefei sth thesi 0.
         newDf = select_features(df, df.iloc[:,df.columns.get_loc('target_class')], fdr_level=0.05)
         return newDf
-
-class FeatureSelectionMethods:
-
-    @staticmethod
-    def remove_low_variance_features(df, thresholdValue):
-
-        # exclude target, time and id from the process
-        selectedFsNoTargetClass = df.drop(['target_class', 'gsId', 'gsStartTime'], axis=1)
-        for i, v in selectedFsNoTargetClass.var().sort_values(ascending=False).items():
-            print(i, round(float(v), 1))
-
-        dfColumnsToRuleOut = df.columns
-
-        # function that calculates threshold th = (.9 * (1 - .9))
-        selector = VarianceThreshold(threshold=thresholdValue)
-        selectedFeaturesMatrix = selector.fit_transform(selectedFsNoTargetClass)
-
-        # Query selector για να πάρω τα indices από τα επιλεγμένα features για να μπορέσω να κατασκευάσω ξανά dataframe
-        selectedFeaturesIndices = selector.get_support(indices=True)
-
-        # Ανακατασκευάζω το dataframe
-        dfToReturn = pd.DataFrame(selectedFeaturesMatrix, index=selectedFsNoTargetClass.index, columns=selectedFsNoTargetClass.iloc[:,selectedFeaturesIndices].columns)
-
-        # Προσθέτω ξανά το target class
-        # dfToReturn = pd.concat([dfToReturn, df[['target_class']]], axis=1, ignore_index=False)
-        dfToReturn = dfToReturn.join(df[['target_class', 'gsId', 'gsStartTime']], how='inner')
-
-        dfColumnsFiltered = dfToReturn.columns
-        featuresRuledOut = [x for x in dfColumnsToRuleOut if x not in dfColumnsFiltered]
-        print("Threshold value ", round(float(thresholdValue), 2))
-        print("Features ruled out ", featuresRuledOut)
-        return dfToReturn
-
-    def removeBasedOnVariance(self, df, thresholdValue):
-
-        selector = VarianceThreshold(threshold=thresholdValue)
-        selectedFeaturesMatrix = selector.fit_transform(df)
-        # self.selectedFeaturesMatrix = selectedFeaturesMatrix
-
-        # Query selector για να πάρω τα indices από τα επιλεγμένα features για να μπορέσω να κατασκευάσω ξανά dataframe
-        selectedFeaturesIndices = selector.get_support(indices=True)
-
-        # Ανακατασκευάζω το dataframe
-        df = pd.DataFrame(selectedFeaturesMatrix, index=df.index,
-                                  columns=df.iloc[:, selectedFeaturesIndices].columns)
-        # self.dfToReturn = df
-        return df

@@ -100,8 +100,8 @@
 # from sklearn.datasets import make_classification
 # from sklearn.model_selection import train_test_split
 # from sklearn.pipeline import Pipeline
-# X, y = make_classification(random_state=0)
-# X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=0)
+# X, y = make_classification(random_state=7)
+# X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=7)
 # pipe = Pipeline([('scalerOne', StandardScaler()), ('sv', SVC())])
 # # The pipeline can be used as any other estimator
 # # and avoids leaking the test set into the train set
@@ -149,7 +149,7 @@
 # X += 2 * rng.uniform(size=X.shape)
 # linearly_separable = (X, y)
 
-# datasets = [make_moons(noise=0.3, random_state=0),
+# datasets = [make_moons(noise=0.3, random_state=7),
 #             make_circles(noise=0.2, factor=0.5, random_state=1),
 #             linearly_separable
 #             ]
@@ -162,7 +162,7 @@
 #     X, y = ds
 #     X = StandardScaler().fit_transform(X)
 #     X_train, X_test, y_train, y_test = \
-#         train_test_split(X, y, test_size=.4, random_state=42)
+#         train_test_split(X, y, test_size=.4, random_state=7)
 
 #     x_min, x_max = X[:, 0].min() - .5, X[:, 0].max() + .5
 #     y_min, y_max = X[:, 1].min() - .5, X[:, 1].max() + .5
