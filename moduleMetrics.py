@@ -18,6 +18,7 @@ class MetricsMethods:
         for idx, (model_name, model) in enumerate(models.items()):
 
             # print given metrics
+            # TODO replace this with a boxplot for each metric example: https://machinelearningmastery.com/compare-machine-learning-algorithms-python-scikit-learn/
             print("Metrics for ", model_name)
             for metric in metrics:
                 results = cross_val_score(model, x_test, y_test, cv=3, scoring=metric)

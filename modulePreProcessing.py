@@ -9,6 +9,8 @@ from sklearn.feature_selection import VarianceThreshold
 from tsfresh import extract_features, select_features
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
+from scipy.stats import spearmanr
+from scipy.cluster import hierarchy
 
 
 def boxplot_features(dataframe, title):
@@ -37,7 +39,8 @@ class ScalingMethods:
         boxplot_features(df, 'After removing outliers')
         return df
 
-    def use_min_max(self, df, columnsToIgnoreList):
+    @staticmethod
+    def use_min_max(df, columnsToIgnoreList):
         boxplot_features(df, 'Before Scaling')
         allColumnsList = pd.Series(df.columns.array).values.tolist()
         columnsToScaleList = [x for x in allColumnsList if x not in columnsToIgnoreList]
@@ -102,7 +105,7 @@ class FeatureMethods:
     # https://scikit-learn.org/stable/auto_examples/inspection/plot_permutation_importance.html
     # https://scikit-learn.org/stable/auto_examples/inspection/plot_permutation_importance_multicollinear.html
     # related papers:
-    # Gilles Louppe, Understanding variable importances in forests of randomized trees
+    # Gilles Louppe, Understanding variable importance in forests of randomized trees
     # TODO include a random feature
     @staticmethod
     def inspection_using_classifier(df, features):
@@ -141,6 +144,31 @@ class FeatureMethods:
         ax2.set_title("Permutation Importance")
         ax2.boxplot(result.importances[perm_sorted_idx].T, vert=False, labels=feature_names[perm_sorted_idx])
 
+        fig.tight_layout()
+        plt.show()
+
+    # takes a dataframe and a list of features to inspect
+    # plots hierarchy of feature correlation "clusters" and correlation heatmap
+    # example
+    # https://scikit-learn.org/stable/auto_examples/inspection/plot_permutation_importance_multicollinear.html#handling-multicollinear-features
+    @staticmethod
+    def correlation_inspection(df, fs):
+
+        x = df[fs]
+
+        # hierarchy of feature correlation "clusters"
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 9))
+        corr = spearmanr(x).correlation
+        corr_linkage = hierarchy.ward(corr)
+        feature_names = x.columns.tolist()
+        dendro = hierarchy.dendrogram(corr_linkage, labels=feature_names, ax=ax1, leaf_rotation=0, orientation='right')
+        dendro_idx = np.arange(0, len(dendro['ivl']))
+
+        # correlation heatmap
+        # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.corr.html
+        sns.heatmap(x.corr(method='pearson'), annot=True, linewidths=.4, fmt='.1f', ax=ax2)
+
+        # show
         fig.tight_layout()
         plt.show()
 
