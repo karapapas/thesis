@@ -4,17 +4,20 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.inspection import permutation_importance
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.feature_selection import VarianceThreshold
+from sklearn.preprocessing import MinMaxScaler, KBinsDiscretizer
 from tsfresh import extract_features, select_features
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+from sklearn.feature_selection import VarianceThreshold, SelectKBest, chi2
+from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge, Lasso, ElasticNet
 from scipy.stats import spearmanr
 from scipy.cluster import hierarchy
+from IPython.display import display, HTML
+from sklearn.model_selection import train_test_split
 
 
+# functions
 def boxplot_features(dataframe, title):
-    except_columns = ['gsId', 'gsStartTime', 'target_class']
+    except_columns = ['gsId', 'userId', 'gsStartTime', 'target_class']
     print_columns = [x for x in dataframe.columns if x not in except_columns]
     sns.boxplot(data=dataframe[print_columns], orient="h", palette="Set3", showmeans=True).set_title(title)
     plt.show()
@@ -25,17 +28,15 @@ class ScalingMethods:
     @staticmethod
     def handle_outliers(df):
         boxplot_features(df, 'Before removing outliers')
-
         for feature in df.columns:
+            median_v = np.percentile(df[feature], 50)
+            mean_v = df[feature].mean()
+            q3_v = np.percentile(df[feature], 75)
+            max_v = np.percentile(df[feature], 99.25)
             if re.search('(^total_)', feature):
-                max_val = np.percentile(df[feature], 99.25)
-                q3_val = np.percentile(df[feature], 75)
-                df.loc[(df[feature] > max_val), feature] = q3_val
+                df.loc[(df[feature] > max_v), feature] = q3_v
             elif re.search('(^avg_)', feature):
-                max_val = np.percentile(df[feature], 99.25)
-                mean_val = df[feature].mean()
-                df.loc[(df[feature] > max_val), feature] = mean_val
-
+                df.loc[(df[feature] > max_v), feature] = median_v
         boxplot_features(df, 'After removing outliers')
         return df
 
@@ -66,37 +67,40 @@ class ScalingMethods:
 
 class FeatureMethods:
 
+    # example https://scikit-learn.org/stable/modules/feature_selection.html#removing-features-with-low-variance
+    # Delta Degrees of Freedom. The divisor used in calculations is N - ddof, where N represents the number of elements.
     @staticmethod
-    def remove_low_variance_features(df, thresholdValue):
+    def remove_low_variance_features(df, thresholdValue, ddof_val):
+        try:
+            # exclude target, time and id from the process
+            selectedFsNoTargetClass = df.drop(['target_class', 'userId', 'gsId', 'gsStartTime'], axis=1)
+            variance = selectedFsNoTargetClass.var(ddof=ddof_val).sort_values(ascending=False).round(2)
+            sns.barplot(variance.values, variance.index, palette="Set3")
+            display(HTML(variance.to_frame().to_html()))
+            dfColumnsToRuleOut = df.columns
 
-        # exclude target, time and id from the process
-        selectedFsNoTargetClass = df.drop(['target_class', 'gsId', 'gsStartTime'], axis=1)
-        variance = selectedFsNoTargetClass.var().sort_values(ascending=False)
-        sns.barplot(variance.values, variance.index, palette="Set3")
-        for i, v in variance.items():
-            print(i, round(float(v), 1))
+            # function that calculates threshold th = (.9 * (1 - .9))
+            selector = VarianceThreshold(threshold=thresholdValue)
+            selectedFeaturesMatrix = selector.fit_transform(selectedFsNoTargetClass)
 
-        dfColumnsToRuleOut = df.columns
+            # query selector for the indices of the selected features to rebuild dataframe
+            selectedFeaturesIndices = selector.get_support(indices=True)
 
-        # function that calculates threshold th = (.9 * (1 - .9))
-        selector = VarianceThreshold(threshold=thresholdValue)
-        selectedFeaturesMatrix = selector.fit_transform(selectedFsNoTargetClass)
+            # rebuild dataframe
+            dfToReturn = pd.DataFrame(selectedFeaturesMatrix, index=selectedFsNoTargetClass.index,
+                                      columns=selectedFsNoTargetClass.iloc[:, selectedFeaturesIndices].columns)
 
-        # Query selector για να πάρω τα indices από τα επιλεγμένα features για να μπορέσω να κατασκευάσω ξανά dataframe
-        selectedFeaturesIndices = selector.get_support(indices=True)
+            # Προσθέτω ξανά το target class
+            # dfToReturn = pd.concat([dfToReturn, df[['target_class']]], axis=1, ignore_index=False)
+            dfToReturn = dfToReturn.join(df[['target_class', 'userId', 'gsId', 'gsStartTime']], how='inner')
 
-        # Ανακατασκευάζω το dataframe
-        dfToReturn = pd.DataFrame(selectedFeaturesMatrix, index=selectedFsNoTargetClass.index, columns=selectedFsNoTargetClass.iloc[:, selectedFeaturesIndices].columns)
-
-        # Προσθέτω ξανά το target class
-        # dfToReturn = pd.concat([dfToReturn, df[['target_class']]], axis=1, ignore_index=False)
-        dfToReturn = dfToReturn.join(df[['target_class', 'gsId', 'gsStartTime']], how='inner')
-
-        dfColumnsFiltered = dfToReturn.columns
-        featuresRuledOut = [x for x in dfColumnsToRuleOut if x not in dfColumnsFiltered]
-        print("Threshold value: ", round(float(thresholdValue), 2))
-        print("Features ruled out: \n", featuresRuledOut)
-        return dfToReturn
+            dfColumnsFiltered = dfToReturn.columns
+            featuresRuledOut = [x for x in dfColumnsToRuleOut if x not in dfColumnsFiltered]
+            print("Threshold value: ", round(float(thresholdValue), 2))
+            print("Features ruled out: \n", featuresRuledOut)
+            return dfToReturn
+        except ValueError as e:
+            print('ValueError exception:', e)
 
     # takes a dataframe
     # plots feature importance (MDI) using Random Forest Classifier
@@ -110,20 +114,13 @@ class FeatureMethods:
     @staticmethod
     def inspection_using_classifier(df, features):
 
-        # independent variables
+        # split dataframe samples for the evaluation inspection
         x = df[features]
-
-        # target class
-        target_class_index = df.columns.get_loc('target_class')
-        y = df.iloc[:, target_class_index]
-
-        # Split dataset to select feature and evaluate the classifier
-        X_train, X_test, y_train, y_test = train_test_split(x, y, stratify=y, random_state=7)
+        y = df.iloc[:, df.columns.get_loc('target_class')]
+        x_train, x_test, y_train, y_test = train_test_split(x, y, stratify=y, random_state=7)
 
         clf = RandomForestClassifier(max_depth=3, n_estimators=5, random_state=7)
-        clf.fit(X_train, y_train)
-        # results = clf.score(X_test, y_test)
-        # print("Accuracy on test set: %.3f%% (%.3f%%)" % (results.mean() * 100.0, results.std() * 100.0))
+        clf.fit(x_train, y_train)
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
@@ -139,7 +136,7 @@ class FeatureMethods:
         ax1.set_yticks(y_ticks)
         ax1.set_ylim((-0.5, len(clf.feature_importances_) - 0.5))
 
-        result = permutation_importance(clf, X_test, y_test, n_repeats=10, random_state=7)
+        result = permutation_importance(clf, x_test, y_test, n_repeats=10, random_state=7)
         perm_sorted_idx = result.importances_mean.argsort()
         ax2.set_title("Permutation Importance")
         ax2.boxplot(result.importances[perm_sorted_idx].T, vert=False, labels=feature_names[perm_sorted_idx])
@@ -153,11 +150,13 @@ class FeatureMethods:
     # https://scikit-learn.org/stable/auto_examples/inspection/plot_permutation_importance_multicollinear.html#handling-multicollinear-features
     @staticmethod
     def correlation_inspection(df, fs):
-
         x = df[fs]
 
         # hierarchy of feature correlation "clusters"
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 9))
+
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.spearmanr.html
+        ax1.set_title("Spearman correlation coefficient (SciPy)")
         corr = spearmanr(x).correlation
         corr_linkage = hierarchy.ward(corr)
         feature_names = x.columns.tolist()
@@ -166,43 +165,81 @@ class FeatureMethods:
 
         # correlation heatmap
         # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.corr.html
+        ax2.set_title("Compute pairwise correlation of columns (Pandas)")
         sns.heatmap(x.corr(method='pearson'), annot=True, linewidths=.4, fmt='.1f', ax=ax2)
 
         # show
         fig.tight_layout()
         plt.show()
 
+    # example
+    # https://scikit-learn.org/stable/auto_examples/feature_selection/plot_feature_selection.html
+    # https://nbviewer.jupyter.org/github/justmarkham/scikit-learn-tips/blob/master/notebooks/23_linear_model_coefficients.ipynb
+    @staticmethod
+    def inspection_using_regressors(df, features):
 
-    def removeBasedOnVariance(self, df, thresholdValue):
+        # split dataframe samples for the evaluation inspection
+        x = df[features]
+        y = df.iloc[:, df.columns.get_loc('target_class')]
+        x_train, x_test, y_train, y_test = train_test_split(x, y, stratify=y, random_state=7)
 
-        selector = VarianceThreshold(threshold=thresholdValue)
-        selectedFeaturesMatrix = selector.fit_transform(df)
-        # self.selectedFeaturesMatrix = selectedFeaturesMatrix
+        # SelectKBest is a wrapper. The default scorer algorithm is f_classif (ANOVA F-value between label/feature)
+        # The smaller the p value the more significant the feature is, so we reverse its result for the plot
+        skb = SelectKBest(chi2, k=2)
+        skb_results = skb.fit(x_train, y_train)
+        p_values = skb_results.pvalues_
+        p_values = -np.log10(p_values)
+        p_values /= p_values.max()
+        f_scores = skb_results.scores_
 
-        # Query selector για να πάρω τα indices από τα επιλεγμένα features για να μπορέσω να κατασκευάσω ξανά dataframe
-        selectedFeaturesIndices = selector.get_support(indices=True)
+        # Check coefficients of Linear Regression
+        lr = LinearRegression().fit(x_train, y_train)
+        lr.score(x_test, y_test)
+        lr_coef_abs = np.abs(lr.coef_)
 
-        # Ανακατασκευάζω το dataframe
-        df = pd.DataFrame(selectedFeaturesMatrix, index=df.index,
-                                  columns=df.iloc[:, selectedFeaturesIndices].columns)
-        # self.dfToReturn = df
+        # Check coefficients of Ridge Regression
+        rr = Ridge(alpha=1.0).fit(x_train, y_train)
+        rr.score(x_test, y_test)
+        rr_coef_abs = np.abs(rr.coef_)
+
+        # Check coefficients of Lasso Regression
+        ls = Lasso(alpha=0.1).fit(x_train, y_train)
+        ls.score(x_test, y_test)
+        ls_coef_abs = np.abs(ls.coef_)
+
+        # Check coefficients of ElasticNet
+        en = ElasticNet(random_state=0).fit(x_train, y_train)
+        en.score(x_test, y_test)
+        en_coef_abs = np.abs(en.coef_)
+
+        df_to_plot = pd.DataFrame({'SelectKBest F scores': f_scores,
+                                   'SelectKBest P values ($-Log(p_{value})$)': p_values,
+                                   'Linear Regression coef.(abs)': lr_coef_abs,
+                                   'Ridge Regression coef.(abs)': rr_coef_abs,
+                                   'Lasso Regression coef.(abs)': ls_coef_abs,
+                                   'ElasticNet coef.(abs)': en_coef_abs
+                                   }, index=features)
+
+        plt.figure(1)
+        plt.clf()
+        ax = df_to_plot.plot.barh().legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+
+        # get selected as: array([3, 4], dtype=int64)
+        selected_features_indices = skb.get_support(indices=True)
+
+        # get selected as list: ['age', 'education']
+        selected_features = x.columns[selected_features_indices.tolist()].values.tolist()
+        return selected_features
+
+    @staticmethod
+    def discretize_features(df, features):
+        discretizer = KBinsDiscretizer(n_bins=5, encode='ordinal', strategy='quantile')
+        df_part_to_disc = df[features]
+        df[features] = discretizer.fit_transform(df_part_to_disc)
+        # convert discretized columns from float to int
+        df[features] = df[features].astype(int)
+        df.head()
         return df
-
-    '''
-    Επιστρέφει ένα νέο dataframe 
-    μόνο με τα features που έχουν άμεση σχέση με τα features ενός round
-    συν τα gsId και gsStartTime που είναι απαραίτητα για time series ανάλυση
-    '''
-    def getDatasetForTsAnalysis(self, dataset):
-        datasetForTsAnalysis = dataset[['gsId',
-                                        'gsStartTime',
-                                        'total_rounds_in_session',
-                                        'total_success_rounds_in_session',
-                                        'total_success_round_points_in_session',
-                                        'avg_round_time_in_session',
-                                        'avg_round_time_for_souccess_rounds_in_session',
-                                        ]].copy()
-        return datasetForTsAnalysis
 
     '''
     Επιστρέφει μόνο τα extracted features
@@ -210,7 +247,8 @@ class FeatureMethods:
     Δεν επιστρέφει column_id και column_sort
     '''
     def extractFeaturesUsingTsFresh(self, datasetForTsAnalysis):
-        datasetWithTsExtractedFeatures = extract_features(datasetForTsAnalysis, column_id='gsId', column_sort='gsStartTime')
+        datasetWithTsExtractedFeatures = extract_features(datasetForTsAnalysis, column_id='gsId',
+                                                          column_sort='gsStartTime')
 
         # drop 100% nan features
         # newDsNoNan = newDs.dropna(axis=1, how='all')
@@ -221,5 +259,5 @@ class FeatureMethods:
     def selectFeaturesUsingTsFresh(self, df):
         df = df.set_index('gsId')
         # auto feature selection. h target class epistrefei sth thesi 0.
-        newDf = select_features(df, df.iloc[:,df.columns.get_loc('target_class')], fdr_level=0.05)
+        newDf = select_features(df, df.iloc[:, df.columns.get_loc('target_class')], fdr_level=0.05)
         return newDf

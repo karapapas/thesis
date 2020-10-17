@@ -4,15 +4,21 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import plot_roc_curve, plot_confusion_matrix, confusion_matrix, plot_precision_recall_curve
 
+
 class MetricsMethods:
 
     # Based on the example at https://scikit-learn.org/stable/modules/model_evaluation.html
     @staticmethod
-    def generate_metrics(models, x_test, y_test, metrics, show_raw_data, ):
+    def generate_metrics(models, x_test, y_test, metrics, show_raw_data):
 
-        roc_axes = None     # for roc curves
-        pr_axes = None      # for precision recall curves
-        cf_matrix = dict.fromkeys(models.keys())    # for confusion matrix
+        # for roc curves
+        roc_axes = None
+
+        # for precision recall curves
+        pr_axes = None
+
+        # for confusion matrix
+        cf_matrix = dict.fromkeys(models.keys())
 
         # for idx, model in enumerate(models):
         for idx, (model_name, model) in enumerate(models.items()):
@@ -53,7 +59,3 @@ class MetricsMethods:
             k = list(cf_matrix)[i]
             sns.heatmap(cf_matrix[k], ax=ax, cbar=i == len(models), annot=True, fmt="d", cmap="RdBu")
             ax.set_title(k, fontsize=8)
-
-        # Precision-Recall
-
-# TODO include method for probabilities prediction for the prediction service clf.predict_proba(X_test)
