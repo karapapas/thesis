@@ -4,7 +4,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.inspection import permutation_importance
-from sklearn.preprocessing import MinMaxScaler, KBinsDiscretizer
+from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, KBinsDiscretizer
 from tsfresh import extract_features, select_features
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import VarianceThreshold, SelectKBest, chi2
@@ -23,7 +23,7 @@ def boxplot_features(dataframe, title):
     plt.show()
 
 
-class ScalingMethods:
+class TransformationMethods:
 
     @staticmethod
     def handle_outliers(df):
@@ -223,17 +223,29 @@ class FeatureMethods:
         plt.figure(1)
         plt.clf()
         ax = df_to_plot.plot.barh().legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
+        plt.show()
 
         # get selected as: array([3, 4], dtype=int64)
         selected_features_indices = skb.get_support(indices=True)
 
         # get selected as list: ['age', 'education']
-        selected_features = x.columns[selected_features_indices.tolist()].values.tolist()
-        return selected_features
+        # return x.columns[selected_features_indices.tolist()].values.tolist()
+
+    @staticmethod
+    def one_hot_encode_features(df, features):
+        ohe = OneHotEncoder(sparse=False)
+        df_temp = df.copy()
+        ohe.fit(df_temp[[features]])
+        print('df shape before drop:', df.shape)
+        df = df.drop([features], axis=1)
+        print('df shape after drop, before ohe:', df.shape)
+        df[ohe.get_feature_names([features])] = ohe.transform(df_temp[[features]])
+        print('df shape after ohe:', df.shape)
+        return df
 
     @staticmethod
     def discretize_features(df, features):
-        discretizer = KBinsDiscretizer(n_bins=5, encode='ordinal', strategy='quantile')
+        discretizer = KBinsDiscretizer(n_bins=6, encode='ordinal', strategy='quantile')
         df_part_to_disc = df[features]
         df[features] = discretizer.fit_transform(df_part_to_disc)
         # convert discretized columns from float to int
