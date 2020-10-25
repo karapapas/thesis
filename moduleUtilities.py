@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from pylab import imread
 
 
 class UtilityMethods:
@@ -32,14 +33,15 @@ class UtilityMethods:
         axs[0, 1].bar(d_bins[:-1]+width_moca, d_heights, width=width_moca, facecolor='green');
 
         # differentiation
-        df_mmse = pd.DataFrame([['Standardised MMSE', 10, 11, 4, 5],
-                               ['uiowa.edu (severe)', 0, 18, 6, 6],
-                               ['uiowa.edu (cut-off)', 0, 0, 24, 6],
-                               ['gov.gr', 12, 9, 4, 5]], columns=['Institution',
-                                                                  'AD', 'AD-MCI', 'MCI',
-                                                                  'No Cog. Imp.']).set_index('Institution')
+        df_mmse = pd.DataFrame([['Ziad(2005)', 25, 1, 2, 1, 1],
+                                ['Standardised MMSE', 10, 11, 4, 0, 5],
+                                ['uiowa.edu (severe)', 0, 18, 6, 0, 6],
+                                ['uiowa.edu (cut-off)', 0, 0, 24, 0, 6],
+                                ['gov.gr', 12, 9, 4, 0, 5]], columns=['Institution',
+                                                                      'AD', 'AD ∩ MCI', 'MCI', 'MCI ∩ NC',
+                                                                      'No Cog. Imp.']).set_index('Institution')
         # dfMOCA = pd.DataFrame([['MOCA (severity)', 20, 2, 3.2, 4.8],
-        df_moca = pd.DataFrame([['MOCA (severity)', 19, 2, 4.2, 4.8],
+        df_moca = pd.DataFrame([['MOCA (severity) \n Ziad(2005)', 19, 2, 4.2, 4.8],
                                ['MOCA (cut-off)', 0, 0, 26, 4]], columns=[' ',
                                                                           'AD', 'AD ∩ MCI', 'MCI',
                                                                           'Norm. Contr.']).set_index(' ')
@@ -49,3 +51,7 @@ class UtilityMethods:
         axs[1,1].set_title('MOCA Differentiation')
         df_mmse.plot.barh(stacked=True, ax=axs[1, 0]);
         df_moca.plot.barh(stacked=True, ax=axs[1, 1]);
+
+        f2, a2 = plt.subplots(1, 1, figsize=(18, 12))
+        image = imread('img/mmse_vs_moca.jpg')
+        plt.imshow(image)
