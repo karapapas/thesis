@@ -4,7 +4,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.inspection import permutation_importance
-from sklearn.preprocessing import OneHotEncoder, MinMaxScaler, KBinsDiscretizer
+from sklearn.preprocessing import OneHotEncoder, KBinsDiscretizer, MinMaxScaler, StandardScaler
 from tsfresh import extract_features, select_features
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_selection import VarianceThreshold, SelectKBest, chi2
@@ -63,6 +63,31 @@ class TransformationMethods:
         dfAfterScaling = pd.concat([dfPartToIgnore, dfScaledPart], axis=1, ignore_index=False)
         boxplot_features(dfAfterScaling, 'After Scaling')
         return dfAfterScaling
+
+    # https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html
+    @staticmethod
+    def use_standard_scaler(df, columns_to_ignore_list):
+        boxplot_features(df, 'Before Scaling')
+        all_columns_list = pd.Series(df.columns.array).values.tolist()
+        columns_to_scale_list = [x for x in all_columns_list if x not in columns_to_ignore_list]
+
+        # partition dataframe
+        df_part_to_scale = df[columns_to_scale_list]
+        df_part_to_ignore = df[columns_to_ignore_list]
+
+        # instantiate scaler
+        standard_scaler = StandardScaler()
+
+        # run scaler on the df part we want to scale
+        scaled_matrix = standard_scaler.fit_transform(df_part_to_scale.values)
+
+        # recreate df
+        df_scaled_part = pd.DataFrame(scaled_matrix, index=df_part_to_scale.index, columns=df_part_to_scale.columns)
+
+        # concat ignored columns and scaled columns to one df
+        df_after_scaling = pd.concat([df_part_to_ignore, df_scaled_part], axis=1, ignore_index=False)
+        boxplot_features(df_after_scaling, 'After Scaling')
+        return df_after_scaling
 
 
 class FeatureMethods:
