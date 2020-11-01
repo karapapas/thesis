@@ -21,7 +21,10 @@ class MetricsMethods:
         # for confusion matrix
         cf_matrix = dict.fromkeys(models.keys())
 
-        # for idx, model in enumerate(models):
+        x_test_m = x_test
+        x_test_cm = x_test
+        y_test_m = y_test
+        y_test_cm = y_test
         for idx, (model_name, model) in enumerate(models.items()):
 
             # print given metrics in boxplot
@@ -29,7 +32,7 @@ class MetricsMethods:
             # https://machinelearningmastery.com/compare-machine-learning-algorithms-python-scikit-learn/
             mbox = pd.DataFrame()
             for metric in metrics:
-                results = cross_val_score(model, x_test, y_test, cv=cv_num, scoring=metric)
+                results = cross_val_score(model, x_test_m, y_test_m, cv=cv_num, scoring=metric)
                 if show_raw_data:
                     raw = np.array2string(results, threshold=np.inf, max_line_width=np.inf, separator=',')
                     raw.replace('\n', '').replace(' ', '')
@@ -39,8 +42,8 @@ class MetricsMethods:
 
             # plot confusion matrix
             # based on the example at https://stackoverflow.com/questions/61825227/
-            y_pred = model.predict(x_test)
-            cf_matrix[model_name] = confusion_matrix(y_test, y_pred)
+            y_pred = model.predict(x_test_cm)
+            cf_matrix[model_name] = confusion_matrix(y_test_cm, y_pred)
 
             # specificity
             tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
