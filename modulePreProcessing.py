@@ -23,21 +23,28 @@ def boxplot_features(dataframe, title):
     plt.show()
 
 
+user_specific_features = ['education', 'laptop_usage', 'smartphone_usage', 'family_med_history',
+                                 'exercising', 'marital_status_1', 'marital_status_3', 'hypertension']
+session_specific_features = ['total_gr_in_gs', 'total_success_rounds_in_session', 'total_win_gr_points_in_gs',
+                             'avg_gr_time_in_gs', 'avg_gr_time_win_gr_in_gs']
+
+
 class TransformationMethods:
 
     @staticmethod
     def handle_outliers(df):
-        boxplot_features(df, 'Before removing outliers')
+        boxplot_features(df[user_specific_features], 'User Specific Features.')
+        boxplot_features(df[session_specific_features], 'Session Specific Features. Before removing outliers')
         for feature in df.columns:
             median_v = np.percentile(df[feature], 50)
             mean_v = df[feature].mean()
             q3_v = np.percentile(df[feature], 75)
-            max_v = np.percentile(df[feature], 99.25)
+            max_v = np.percentile(df[feature], 99.7)
             if re.search('(^total_)', feature):
-                df.loc[(df[feature] > max_v), feature] = q3_v
+                df.loc[(df[feature] > max_v), feature] = mean_v
             elif re.search('(^avg_)', feature):
                 df.loc[(df[feature] > max_v), feature] = median_v
-        boxplot_features(df, 'After removing outliers')
+        boxplot_features(df[session_specific_features], 'Session Specific Features. After removing outliers')
         return df
 
     @staticmethod

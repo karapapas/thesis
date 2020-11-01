@@ -19,9 +19,9 @@ class TrainingMethods:
             'lr': LogisticRegression(random_state=7),
             'dt': DecisionTreeClassifier(max_depth=2),
             'rf': RandomForestClassifier(n_estimators=2, random_state=7),
-            'sv': SVC(kernel="linear", C=0.025),
+            'sv': SVC(kernel="linear", C=0.025, probability=True),
             # 'qd': QuadraticDiscriminantAnalysis(),
-            'kn': KNeighborsClassifier(3)
+            'kn': KNeighborsClassifier(n_neighbors=15)
         }
         custom_ensemble = VotingClassifier([('clf1', clfs.get('lr')),
                                             ('clf2', clfs.get('dt')),
