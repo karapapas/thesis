@@ -19,7 +19,9 @@ from sklearn.model_selection import train_test_split
 def boxplot_features(dataframe, title):
     except_columns = ['gsId', 'userId', 'gsStartTime', 'target_class']
     print_columns = [x for x in dataframe.columns if x not in except_columns]
+    f, ax = plt.subplots(figsize=(18, 4)) # 18 for full width. 0.5 height ideally for each feature.
     sns.boxplot(data=dataframe[print_columns], orient="h", palette="Set3", showmeans=True).set_title(title)
+    sns.stripplot(data=dataframe[print_columns], orient="h", size=4, color=".3", linewidth=0)
     plt.show()
 
 
@@ -33,21 +35,37 @@ class TransformationMethods:
 
     @staticmethod
     def handle_outliers(df):
-        boxplot_features(df[user_specific_features], 'User Specific Features.')
-        boxplot_features(df[session_specific_features], 'Session Specific Features. Before removing outliers')
+        df_beforehand = df.copy()
+
         for feature in df.columns:
-            median_v = np.quantile(df[feature], 0.5)
-            mean_v = df[feature].mean()
-            q3_v = np.quantile(df[feature], 0.75)
-            # print('for feature ', feature, ' median:', median_v, ' mean:', mean_v, ' q3:',q3_v)
-            max_v = np.quantile(df[feature], 0.997)
-            if re.search('(^total_)', feature):
-                df.loc[(df[feature] > max_v), feature] = mean_v
-            # elif re.search('(^avg_)', feature):
-            else:
+
+            # quartiles are standard on 25th, 50th and 75% percentile
+            q1_v = np.percentile(df[feature], 25).round(2)
+            median_v = np.percentile(df[feature], 50).round(2)
+            q3_v = np.percentile(df[feature], 75).round(2)
+            iqr_v = (q3_v - q1_v).round(2)
+
+            # min, max depends
+            min_v = (q1_v - 1.5*iqr_v).round(2)
+            max_v = (q3_v + 1.5*iqr_v).round(2)
+            # print('feature ', feature, ' min=', min_v, ' Q1=', q1_v, ' Q2=', median_v, ' Q3', q3_v, ' max=', max_v)
+
+            if feature in ['userId ', 'gsId ', 'gsStartTime', 'target_class']:
+                pass
+            elif re.search('(^total_)', feature):
+                df.loc[(df[feature] > max_v), feature] = q3_v
+                df.loc[(df[feature] < min_v), feature] = q1_v
+            elif re.search('(^avg_)', feature):
+                df.loc[(df[feature] < min_v), feature] = median_v
                 df.loc[(df[feature] > max_v), feature] = median_v
-        boxplot_features(df[user_specific_features], 'User Specific Features. After removing outliers')
-        boxplot_features(df[session_specific_features], 'Session Specific Features. After removing outliers')
+            else:
+                df.loc[(df[feature] < min_v), feature] = q1_v
+                df.loc[(df[feature] > max_v), feature] = q3_v
+
+        boxplot_features(df_beforehand[user_specific_features], 'User Specific Features. Before. ')
+        boxplot_features(df[user_specific_features], 'User Specific Features. After.')
+        boxplot_features(df_beforehand[session_specific_features], 'Session Specific Features. Before.')
+        boxplot_features(df[session_specific_features], 'Session Specific Features. After.')
         return df
 
     @staticmethod
@@ -193,6 +211,7 @@ class FeatureMethods:
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.spearmanr.html
         ax1.set_title("Spearman correlation coefficient (SciPy)")
         corr = spearmanr(x).correlation
+        print('corr=', corr)
         corr_linkage = hierarchy.ward(corr)
         feature_names = x.columns.tolist()
         dendro = hierarchy.dendrogram(corr_linkage, labels=feature_names, ax=ax1, leaf_rotation=0, orientation='right')
