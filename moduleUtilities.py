@@ -27,10 +27,18 @@ class UtilityMethods:
         axs[0, 0].set_title('MMSE Distribution')
         axs[0, 0].bar(a_bins[:-1], a_heights, width=width_mmse, facecolor='orange');
         axs[0, 0].bar(b_bins[:-1]+width_mmse, b_heights, width=width_mmse, facecolor='red');
+        colors = {'MMSE_PRE': 'orange', 'MMSE_POST': 'red'}
+        labels = list(colors.keys())
+        handles = [plt.Rectangle((0, 0), 1, 1, color=colors[label]) for label in labels]
+        axs[0, 0].legend(handles, labels);
 
         axs[0, 1].set_title('MOCA Distribution')
         axs[0, 1].bar(c_bins[:-1], c_heights, width=width_moca, facecolor='lightgreen');
         axs[0, 1].bar(d_bins[:-1]+width_moca, d_heights, width=width_moca, facecolor='green');
+        colors = {'MOCA_PRE': 'lightgreen', 'MOCA_POST': 'green'}
+        labels = list(colors.keys())
+        handles = [plt.Rectangle((0, 0), 1, 1, color=colors[label]) for label in labels]
+        axs[0, 1].legend(handles, labels);
 
         # differentiation
         df_mmse = pd.DataFrame([['Ziad(2005)', 25, 1, 2, 1, 1],
@@ -45,10 +53,10 @@ class UtilityMethods:
                                ['MOCA (cut-off)', 0, 0, 26, 4]], columns=[' ',
                                                                           'AD', 'AD ∩ MCI', 'MCI',
                                                                           'Norm. Contr.']).set_index(' ')
-        plt.figtext(0.5,0.5, 'Class Label Differention by institution', ha="center", va="top", fontsize=16)
-        plt.subplots_adjust(hspace = 0.5)
-        axs[1,0].set_title('MMSE Differentiation')
-        axs[1,1].set_title('MOCA Differentiation')
+        plt.figtext(0.5, 0.5, 'Class Label Differention by institution', ha="center", va="top", fontsize=16)
+        plt.subplots_adjust(hspace=0.5)
+        axs[1, 0].set_title('MMSE Differentiation')
+        axs[1, 1].set_title('MOCA Differentiation')
         df_mmse.plot.barh(stacked=True, ax=axs[1, 0]);
         df_moca.plot.barh(stacked=True, ax=axs[1, 1]);
 
