@@ -36,14 +36,17 @@ class TransformationMethods:
         boxplot_features(df[user_specific_features], 'User Specific Features.')
         boxplot_features(df[session_specific_features], 'Session Specific Features. Before removing outliers')
         for feature in df.columns:
-            median_v = np.percentile(df[feature], 50)
+            median_v = np.quantile(df[feature], 0.5)
             mean_v = df[feature].mean()
-            q3_v = np.percentile(df[feature], 75)
-            max_v = np.percentile(df[feature], 99.7)
+            q3_v = np.quantile(df[feature], 0.75)
+            # print('for feature ', feature, ' median:', median_v, ' mean:', mean_v, ' q3:',q3_v)
+            max_v = np.quantile(df[feature], 0.997)
             if re.search('(^total_)', feature):
                 df.loc[(df[feature] > max_v), feature] = mean_v
-            elif re.search('(^avg_)', feature):
+            # elif re.search('(^avg_)', feature):
+            else:
                 df.loc[(df[feature] > max_v), feature] = median_v
+        boxplot_features(df[user_specific_features], 'User Specific Features. After removing outliers')
         boxplot_features(df[session_specific_features], 'Session Specific Features. After removing outliers')
         return df
 
