@@ -16,16 +16,16 @@ from sklearn.model_selection import train_test_split
 
 
 # functions
-def boxplot_features(dataframe, title):
+def boxplot_features(dataframe, title, height):
     except_columns = ['gsId', 'userId', 'gsStartTime', 'target_class']
     print_columns = [x for x in dataframe.columns if x not in except_columns]
-    f, ax = plt.subplots(figsize=(18, 4)) # 18 for full width. 0.5 height ideally for each feature.
+    f, ax = plt.subplots(figsize=(18, height))
     sns.boxplot(data=dataframe[print_columns], orient="h", palette="Set3", showmeans=True).set_title(title)
     sns.stripplot(data=dataframe[print_columns], orient="h", size=4, color=".3", linewidth=0)
     plt.show()
 
 
-user_specific_features = ['education', 'laptop_usage', 'smartphone_usage', 'family_med_history',
+user_specific_features = ['sex', 'education', 'laptop_usage', 'smartphone_usage', 'family_med_history',
                                  'exercising', 'marital_status_1', 'marital_status_3', 'hypertension']
 session_specific_features = ['total_gr_in_gs', 'total_success_rounds_in_session', 'total_win_gr_points_in_gs',
                              'avg_gr_time_in_gs', 'avg_gr_time_win_gr_in_gs']
@@ -50,7 +50,8 @@ class TransformationMethods:
             max_v = (q3_v + 1.5*iqr_v).round(2)
             # print('feature ', feature, ' min=', min_v, ' Q1=', q1_v, ' Q2=', median_v, ' Q3', q3_v, ' max=', max_v)
 
-            if feature in ['userId ', 'gsId ', 'gsStartTime', 'target_class']:
+            features_to_ignore = ['userId ', 'gsId ', 'gsStartTime', 'target_class', 'sex', 'education']
+            if feature in features_to_ignore:
                 pass
             elif re.search('(^total_)', feature):
                 df.loc[(df[feature] > max_v), feature] = q3_v
@@ -62,15 +63,15 @@ class TransformationMethods:
                 df.loc[(df[feature] < min_v), feature] = q1_v
                 df.loc[(df[feature] > max_v), feature] = q3_v
 
-        boxplot_features(df_beforehand[user_specific_features], 'User Specific Features. Before. ')
-        boxplot_features(df[user_specific_features], 'User Specific Features. After.')
-        boxplot_features(df_beforehand[session_specific_features], 'Session Specific Features. Before.')
-        boxplot_features(df[session_specific_features], 'Session Specific Features. After.')
+        boxplot_features(df_beforehand[user_specific_features], 'User Specific Features. Before. ', 5)
+        boxplot_features(df[user_specific_features], 'User Specific Features. After.', 5)
+        boxplot_features(df_beforehand[session_specific_features], 'Session Specific Features. Before.', 5)
+        boxplot_features(df[session_specific_features], 'Session Specific Features. After.', 5)
         return df
 
     @staticmethod
     def use_min_max(df, columnsToIgnoreList):
-        boxplot_features(df, 'Before Scaling')
+        boxplot_features(df, 'Before Scaling', 10)
         allColumnsList = pd.Series(df.columns.array).values.tolist()
         columnsToScaleList = [x for x in allColumnsList if x not in columnsToIgnoreList]
 
@@ -89,13 +90,13 @@ class TransformationMethods:
 
         # concat ignored columns and scaled columns to one df
         dfAfterScaling = pd.concat([dfPartToIgnore, dfScaledPart], axis=1, ignore_index=False)
-        boxplot_features(dfAfterScaling, 'After Scaling')
+        boxplot_features(dfAfterScaling, 'After Scaling', 10)
         return dfAfterScaling
 
     # https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html
     @staticmethod
     def use_standard_scaler(df, columns_to_ignore_list):
-        boxplot_features(df, 'Before Scaling')
+        boxplot_features(df, 'Before Scaling', 10)
         all_columns_list = pd.Series(df.columns.array).values.tolist()
         columns_to_scale_list = [x for x in all_columns_list if x not in columns_to_ignore_list]
 
@@ -114,7 +115,7 @@ class TransformationMethods:
 
         # concat ignored columns and scaled columns to one df
         df_after_scaling = pd.concat([df_part_to_ignore, df_scaled_part], axis=1, ignore_index=False)
-        boxplot_features(df_after_scaling, 'After Scaling')
+        boxplot_features(df_after_scaling, 'After Scaling', 10)
         return df_after_scaling
 
 
@@ -123,35 +124,35 @@ class FeatureMethods:
     # example https://scikit-learn.org/stable/modules/feature_selection.html#removing-features-with-low-variance
     # Delta Degrees of Freedom. The divisor used in calculations is N - ddof, where N represents the number of elements.
     @staticmethod
-    def remove_low_variance_features(df, thresholdValue, ddof_val):
+    def remove_low_variance_features(df, threshold_val, ddof_val):
         try:
             # exclude target, time and id from the process
-            selectedFsNoTargetClass = df.drop(['target_class', 'userId', 'gsId', 'gsStartTime'], axis=1)
-            variance = selectedFsNoTargetClass.var(ddof=ddof_val).sort_values(ascending=False).round(2)
+            features_to_cal_variance_for = df.drop(['target_class', 'userId', 'gsId', 'gsStartTime'], axis=1)
+            variance = features_to_cal_variance_for.var(ddof=ddof_val).sort_values(ascending=False).round(10)
+            f, ax = plt.subplots(figsize=(18, 10))
             sns.barplot(variance.values, variance.index, palette="Set3")
+            plt.show()
             display(HTML(variance.to_frame().to_html()))
-            dfColumnsToRuleOut = df.columns
+            all_columns = df.columns
 
-            # function that calculates threshold th = (.9 * (1 - .9))
-            selector = VarianceThreshold(threshold=thresholdValue)
-            selectedFeaturesMatrix = selector.fit_transform(selectedFsNoTargetClass)
+            selector = VarianceThreshold(threshold=threshold_val)
+            selected_features_matrix = selector.fit_transform(features_to_cal_variance_for)
 
             # query selector for the indices of the selected features to rebuild dataframe
-            selectedFeaturesIndices = selector.get_support(indices=True)
+            indices_of_feature_to_remain = selector.get_support(indices=True)
 
             # rebuild dataframe
-            dfToReturn = pd.DataFrame(selectedFeaturesMatrix, index=selectedFsNoTargetClass.index,
-                                      columns=selectedFsNoTargetClass.iloc[:, selectedFeaturesIndices].columns)
+            df_new = pd.DataFrame(selected_features_matrix, index=features_to_cal_variance_for.index,
+                                  columns=features_to_cal_variance_for.iloc[:, indices_of_feature_to_remain].columns)
 
-            # Προσθέτω ξανά το target class
             # dfToReturn = pd.concat([dfToReturn, df[['target_class']]], axis=1, ignore_index=False)
-            dfToReturn = dfToReturn.join(df[['target_class', 'userId', 'gsId', 'gsStartTime']], how='inner')
+            df_to_return = df_new.join(df[['target_class', 'userId', 'gsId', 'gsStartTime']], how='inner')
 
-            dfColumnsFiltered = dfToReturn.columns
-            featuresRuledOut = [x for x in dfColumnsToRuleOut if x not in dfColumnsFiltered]
-            print("Threshold value: ", round(float(thresholdValue), 2))
-            print("Features ruled out: \n", featuresRuledOut)
-            return dfToReturn
+            features_to_keep = df_to_return.columns
+            features_ruled_out = [x for x in all_columns if x not in features_to_keep]
+            print("Threshold value: ", round(float(threshold_val), 2))
+            print("Features ruled out: \n", features_ruled_out)
+            return df_to_return
         except ValueError as e:
             print('ValueError exception:', e)
 
@@ -211,7 +212,7 @@ class FeatureMethods:
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.spearmanr.html
         ax1.set_title("Spearman correlation coefficient (SciPy)")
         corr = spearmanr(x).correlation
-        print('corr=', corr)
+        # print('corr=', corr)
         corr_linkage = hierarchy.ward(corr)
         feature_names = x.columns.tolist()
         dendro = hierarchy.dendrogram(corr_linkage, labels=feature_names, ax=ax1, leaf_rotation=0, orientation='right')
@@ -299,12 +300,12 @@ class FeatureMethods:
 
     @staticmethod
     def discretize_features(df, features):
+        df_before_discretize = df.copy()
         discretizer = KBinsDiscretizer(n_bins=6, encode='ordinal', strategy='quantile')
         df_part_to_disc = df[features]
         df[features] = discretizer.fit_transform(df_part_to_disc)
         # convert discretized columns from float to int
         df[features] = df[features].astype(int)
-        df.head()
         return df
 
     '''
