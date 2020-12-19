@@ -46,12 +46,12 @@ class UtilityMethods:
                                 ['uiowa.edu (severe)', 0, 18, 6, 0, 6],
                                 ['uiowa.edu (cut-off)', 0, 0, 24, 0, 6],
                                 ['gov.gr', 12, 9, 4, 0, 5]], columns=['Institution',
-                                                                      'AD', 'AD ∩ MCI', 'MCI', 'MCI ∩ NC',
+                                                                      'AD', 'AD /\ MCI', 'MCI', 'MCI /\ NC',
                                                                       'No Cog. Imp.']).set_index('Institution')
         # dfMOCA = pd.DataFrame([['MOCA (severity)', 20, 2, 3.2, 4.8],
         df_moca = pd.DataFrame([['MOCA (severity) \n Ziad(2005)', 19, 2, 4.2, 4.8],
                                ['MOCA (cut-off)', 0, 0, 26, 4]], columns=[' ',
-                                                                          'AD', 'AD ∩ MCI', 'MCI',
+                                                                          'AD', 'AD /\ MCI', 'MCI',
                                                                           'Norm. Contr.']).set_index(' ')
         plt.figtext(0.5, 0.5, 'Class Label Differention by institution', ha="center", va="top", fontsize=16)
         plt.subplots_adjust(hspace=0.5)
