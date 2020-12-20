@@ -20,18 +20,20 @@ class TrainingMethods:
 
         clfs = {
             'lr': LogisticRegression(random_state=7),
-            'dt': DecisionTreeClassifier(max_depth=2),
-            'rf': RandomForestClassifier(n_estimators=2, random_state=7),
-            'sv': SVC(kernel="linear", C=0.025, probability=True),
+            'dt': DecisionTreeClassifier(),
+            'rf': RandomForestClassifier(n_estimators=100, random_state=7),
+            'sv': SVC(kernel="rbf", C=1, probability=True),
             'gn': GaussianNB(),
-            'mp': MLPClassifier(random_state=1, max_iter=800),
-            'kn': KNeighborsClassifier(n_neighbors=15)
+            'gn_o': GaussianNB(var_smoothing=0.25),
+            'mp': MLPClassifier(random_state=7, max_iter=200),
+            'kn': KNeighborsClassifier(n_neighbors=5)
         }
         custom_ensemble = VotingClassifier([('clf1', clfs.get('lr')),
                                             ('clf2', clfs.get('dt')),
                                             ('clf3', clfs.get('gn')),
-                                            ('clf4', clfs.get('kn')),
-                                            ('clf5', clfs.get('rf'))], voting='soft')
+                                            ('clf4', clfs.get('gn_o')),
+                                            ('clf5', clfs.get('kn')),
+                                            ('clf6', clfs.get('rf'))], voting='soft')
         clfs['ce'] = custom_ensemble
 
         # train classifiers
@@ -41,6 +43,7 @@ class TrainingMethods:
             'rf': clfs.get('rf').fit(x_train, y_train),
             'sv': clfs.get('sv').fit(x_train, y_train),
             'gn': clfs.get('gn').fit(x_train, y_train),
+            'gn_o': clfs.get('gn_o').fit(x_train, y_train),
             'mp': clfs.get('mp').fit(x_train, y_train),
             'kn': clfs.get('kn').fit(x_train, y_train),
             'ce': clfs.get('ce').fit(x_train, y_train)
@@ -56,6 +59,7 @@ class TrainingMethods:
             "Random Forest": clfs_trained.get('rf'),
             "Support Vector Classifier": clfs_trained.get('sv'),
             "Gaussian Naive Bayes": clfs_trained.get('gn'),
+            "Gaussian Naive Bayes Optimized": clfs_trained.get('gn_o'),
             "Multi-layer Perceptron classifier": clfs_trained.get('mp'),
             "K Neighbors Classifier": clfs_trained.get('kn'),
             "Custom Ensemble": clfs_trained.get('ce')
