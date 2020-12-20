@@ -32,7 +32,7 @@ user_specific_features = ['sex', 'education', 'laptop_usage', 'smartphone_usage'
 session_specific_features = ['total_gr_in_gs', 'total_success_rounds_in_session', 'total_win_gr_points_in_gs',
                              'avg_gr_time_in_gs', 'avg_gr_time_win_gr_in_gs', 'rf_decimal_100']
 
-game_specific_features = ['puzzleImp', 'mazeImp', 'anaklisiImp', 'calcImp', 'nameingImp',
+game_specific_features = ['puzzleImp', 'mazeImp', 'anaklisiImp', 'calcImp', 'namingImp',
                           'soundImp', 'orientImp', 'langImp', 'logicImp', 'memoryImp']
 
 
