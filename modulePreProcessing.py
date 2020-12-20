@@ -6,10 +6,8 @@ import matplotlib.pyplot as plt
 import scipy.cluster.hierarchy as sch
 from sklearn.inspection import permutation_importance
 from sklearn.preprocessing import OneHotEncoder, KBinsDiscretizer, MinMaxScaler, StandardScaler
-from tsfresh import extract_features, select_features
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_selection import VarianceThreshold, SelectKBest, chi2, f_classif, mutual_info_classif
-from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge, Lasso, ElasticNet
+from sklearn.feature_selection import VarianceThreshold, SelectKBest, chi2, f_classif
 from scipy.cluster import hierarchy
 from IPython.display import display, HTML
 from sklearn.model_selection import train_test_split
@@ -361,25 +359,3 @@ class FeatureMethods:
         # convert discretized columns from float to int
         df[features] = df[features].astype(int)
         return df
-
-    '''
-    Επιστρέφει μόνο τα extracted features
-    Δεν επιστρέφει τα input features
-    Δεν επιστρέφει column_id και column_sort
-    '''
-
-    def extractFeaturesUsingTsFresh(self, datasetForTsAnalysis):
-        datasetWithTsExtractedFeatures = extract_features(datasetForTsAnalysis, column_id='gsId',
-                                                          column_sort='gsStartTime')
-
-        # drop 100% nan features
-        # newDsNoNan = newDs.dropna(axis=1, how='all')
-        datasetWithTsExtractedFeaturesNoNan = datasetWithTsExtractedFeatures.dropna(axis=1, how='all')
-
-        return datasetWithTsExtractedFeaturesNoNan
-
-    def selectFeaturesUsingTsFresh(self, df):
-        df = df.set_index('gsId')
-        # auto feature selection. h target class epistrefei sth thesi 0.
-        newDf = select_features(df, df.iloc[:, df.columns.get_loc('target_class')], fdr_level=0.05)
-        return newDf
