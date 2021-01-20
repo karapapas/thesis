@@ -7,7 +7,7 @@ import scipy.cluster.hierarchy as sch
 from sklearn.inspection import permutation_importance
 from sklearn.preprocessing import OneHotEncoder, KBinsDiscretizer, MinMaxScaler, StandardScaler
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_selection import VarianceThreshold, SelectKBest, chi2, f_classif
+from sklearn.feature_selection import VarianceThreshold, SelectKBest
 from scipy.cluster import hierarchy
 from IPython.display import display, HTML
 from sklearn.model_selection import train_test_split
@@ -71,6 +71,7 @@ class TransformationMethods:
                 df.loc[(df[feature] > max_v), feature] = q3_v
 
         boxplot_features(df_beforehand, ['age'], 'User Age. Before. ', 1)
+        boxplot_features(df, ['age'], 'User Age. After.', 1)
 
         boxplot_features(df_beforehand, user_specific_features, 'Rest of User Specific Features. Before. ', 5)
         boxplot_features(df, user_specific_features, 'Rest of User Specific Features. After.', 5)
@@ -136,6 +137,26 @@ class TransformationMethods:
         boxplot_features(df_after_scaling, print_columns, 'After Scaling using StandardScaler', 10)
         return df_after_scaling
 
+    @staticmethod
+    def plot_2d_space(x, y, label):
+        print('cols:', x.columns)
+
+        print('x:',x, 'y:',y)
+        test = x[['avg_gr_time_in_gs']]
+        temp = x[['orientImp']]
+        colors = ['#1F77B4', '#FF7F0E']
+        markers = ['o', 's']
+        for l, c, m in zip(np.unique(y), colors, markers):
+            print('L:', l, ' c:', c, ' m:', m)
+            plt.scatter(
+                temp[y == l],
+                test[y == l],
+                c=c, label=l, marker=m
+            )
+        plt.title(label)
+        plt.legend(loc='upper right')
+        plt.show()
+
 
 class FeatureMethods:
 
@@ -183,7 +204,7 @@ class FeatureMethods:
     # related papers:
     # Gilles Louppe, Understanding variable importance in forests of randomized trees
     @staticmethod
-    def inspection_using_classifier(df, features):
+    def inspection_using_mdi_mda(df, features):
 
         # split dataframe samples for the evaluation inspection
         x = df[features]
@@ -193,10 +214,10 @@ class FeatureMethods:
         clf = RandomForestClassifier(max_depth=6, n_estimators=5, random_state=7)
         clf.fit(x_train, y_train)
 
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-
         feature_names = x.columns
         tree_importance_sorted_idx = np.argsort(clf.feature_importances_)
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, (len(feature_names)*0.4) + 1.5))
 
         y_ticks = x.columns.to_numpy()  # pandas.core.indexes.base.Index to numpy.ndarray
         # tree_indices = np.arange(0, len(feature_names))
@@ -247,13 +268,13 @@ class FeatureMethods:
         feature_names = x.columns.tolist()
 
         # create dictionary of clusters
-        X = corr_pearson.values
-        # print("X:", X)
-        d = sch.distance.pdist(X)
-        # print("d:", d)
-        L = sch.linkage(d, method='complete')
-        # print("L:", L)
-        ind = sch.fcluster(L, perc_of_max_distance*d.max(), 'distance')
+        corr_values = corr_pearson.values
+        # print("corr_pearson.values:", X)
+        d = sch.distance.pdist(corr_values)
+        # print("sch.distance.pdist(X):", d)
+        link = sch.linkage(d, method='complete')
+        # print("sch.linkage(d, method='complete'):", L)
+        ind = sch.fcluster(link, perc_of_max_distance*d.max(), 'distance')
         # print("ind:", ind)
         columns = [feature_names[i] for i in list((np.argsort(ind)))]
         x = x.reindex(columns, axis=1)
@@ -272,7 +293,7 @@ class FeatureMethods:
 
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.dendrogram.html
         # hierarchy.dendrogram(corr_linkage, labels=feature_names, ax=ax1, leaf_rotation=0, orientation='right',
-        hierarchy.dendrogram(L, labels=x.columns.tolist(), ax=ax1, leaf_rotation=0, orientation='right',
+        hierarchy.dendrogram(link, labels=x.columns.tolist(), ax=ax1, leaf_rotation=0, orientation='right',
                              get_leaves=True, leaf_font_size=14, color_threshold=perc_of_max_distance*d.max())
         plt.show()
 
@@ -282,55 +303,36 @@ class FeatureMethods:
     # https://scikit-learn.org/stable/auto_examples/feature_selection/plot_feature_selection.html
     # https://nbviewer.jupyter.org/github/justmarkham/scikit-learn-tips/blob/master/notebooks/23_linear_model_coefficients.ipynb
     @staticmethod
-    def inspection_using_regressors(df, features, select_k_features):
+    def inspection_using_select_k_best(df, features, select_k_features, scorer):
 
         # split dataframe samples for the evaluation inspection
         x = df[features]
         y = df.iloc[:, df.columns.get_loc('target_class')]
         x_train, x_test, y_train, y_test = train_test_split(x, y, stratify=y, random_state=7)
 
-        # SelectKBest is a wrapper. The default scorer algorithm is f_classif (ANOVA F-value between label/feature)
-        # The smaller the p value the more significant the feature is, so we reverse its result for the plot
-
-        # chi2, f_classif, mutual_info_classif
-
-        skb = SelectKBest(f_classif, k=select_k_features)
+        skb = SelectKBest(scorer, k=select_k_features)
         skb_results = skb.fit(x_train, y_train)
         p_values = skb_results.pvalues_
         p_values = -np.log10(p_values)
         p_values /= p_values.max()
         f_scores = skb_results.scores_
 
-        # # Check coefficients of Linear Regression
-        # lr = LinearRegression().fit(x_train, y_train)
-        # lr.score(x_test, y_test)
-        # lr_coef_abs = np.abs(lr.coef_)
-        #
-        # # Check coefficients of Ridge Regression
-        # rr = Ridge(alpha=1.0).fit(x_train, y_train)
-        # rr.score(x_test, y_test)
-        # rr_coef_abs = np.abs(rr.coef_)
-        #
-        # # Check coefficients of Lasso Regression
-        # ls = Lasso(alpha=0.1).fit(x_train, y_train)
-        # ls.score(x_test, y_test)
-        # ls_coef_abs = np.abs(ls.coef_)
-        #
-        # # Check coefficients of ElasticNet
-        # en = ElasticNet(random_state=0).fit(x_train, y_train)
-        # en.score(x_test, y_test)
-        # en_coef_abs = np.abs(en.coef_)
+        # sort
+        # get score indices
+        score_indices = np.argsort(f_scores)
+        # get feature names
+        feature_names = []
+        for idx, i in enumerate(x.columns):
+            feature_names.append(x.columns[score_indices[idx]])
+        f, ax1 = plt.subplots(figsize=(12, (len(features)*0.4) + 1.5))
+        df_to_plot = pd.DataFrame({'SelectKBest F scores': f_scores[score_indices],
+                                   'SelectKBest P values ($-Log(p_{value})$)': p_values[score_indices]
+                                   }, index=feature_names)
 
-        df_to_plot = pd.DataFrame({'SelectKBest F scores': f_scores,
-                                   'SelectKBest P values ($-Log(p_{value})$)': p_values
-                                   # 'Linear Regression coef.(abs)': lr_coef_abs,
-                                   # 'Ridge Regression coef.(abs)': rr_coef_abs,
-                                   # 'Lasso Regression coef.(abs)': ls_coef_abs,
-                                   # 'ElasticNet coef.(abs)': en_coef_abs
-                                   }, index=features)
-
-        ax = df_to_plot.plot.barh().legend(loc='best', bbox_to_anchor=(1.0, 0.5))
-        plt.show()
+        ax1.xaxis.set_tick_params(width=5)
+        ax1.tick_params(axis='both', which='major', labelsize=16)
+        plt.rcParams['font.size'] = "12"
+        df_to_plot.plot.barh(ax=ax1).legend(loc='best', bbox_to_anchor=(1.0, 0.5))
 
         # get selected as: array([3, 4], dtype=int64)
         selected_features_indices = skb.get_support(indices=True)
@@ -352,7 +354,7 @@ class FeatureMethods:
 
     @staticmethod
     def discretize_features(df, features):
-        df_before_discretize = df.copy()
+
         discretizer = KBinsDiscretizer(n_bins=6, encode='ordinal', strategy='quantile')
         df_part_to_disc = df[features]
         df[features] = discretizer.fit_transform(df_part_to_disc)

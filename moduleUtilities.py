@@ -5,6 +5,35 @@ from pylab import imread
 
 
 class UtilityMethods:
+    fs = {
+        'all': ['age', 'education', 'laptop_usage', 'smartphone_usage', 'family_med_history',
+                'exercising', 'marital_status_1', 'marital_status_3', 'hypertension',
+                'total_gr_in_gs', 'total_success_rounds_in_session', 'total_win_gr_points_in_gs',
+                'avg_gr_time_in_gs', 'avg_gr_time_win_gr_in_gs', 'rf_integer_3', 'rf_decimal_100',
+                'puzzleImp', 'mazeImp', 'anaklisiImp', 'namingImp', 'soundImp', 'orientImp', 'langImp',
+                'logicImp', 'memoryImp'],
+        'session': ['total_gr_in_gs', 'total_success_rounds_in_session', 'total_win_gr_points_in_gs',
+                    'avg_gr_time_in_gs', 'avg_gr_time_win_gr_in_gs', 'rf_integer_3', 'rf_decimal_100',
+                    'puzzleImp', 'mazeImp', 'anaklisiImp', 'namingImp', 'soundImp', 'orientImp', 'langImp',
+                    'logicImp', 'memoryImp'],
+        'manual': ['age', 'family_med_history', 'exercising', 'education',
+                   'avg_gr_time_in_gs', 'orientImp', 'namingImp', 'memoryImp', 'anaklisiImp'],
+        'auto': ['education', 'laptop_usage', 'smartphone_usage', 'family_med_history', 'exercising',
+                 'marital_status_1', 'marital_status_3', 'hypertension', 'total_win_gr_points_in_gs',
+                 'anaklisiImp', 'orientImp', 'logicImp'],
+        'auto_init': ['education', 'laptop_usage', 'smartphone_usage', 'family_med_history', 'exercising',
+                      # 'marital_status',
+                      'hypertension', 'total_win_gr_points_in_gs', 'anaklisiImp', 'orientImp', 'logicImp'],
+        'games': ['puzzleImp', 'mazeImp', 'anaklisiImp', 'namingImp', 'soundImp', 'orientImp',
+                  'langImp', 'logicImp', 'memoryImp']
+    }
+
+    # standard_data
+    sd = {
+        'test_size': 0.25,
+        'cv_num': 5,
+        'random_state': 7
+    }
 
     # inspect the distribution of potential target classes
     @staticmethod
@@ -21,12 +50,12 @@ class UtilityMethods:
         c_heights, c_bins = np.histogram(dfl['moca_pre_init'])
         d_heights, d_bins = np.histogram(dfl['moca_post_init'], bins=c_bins)
 
-        width_mmse = (a_bins[1] - a_bins[0])/3
-        width_moca = (c_bins[1] - d_bins[0])/3
+        width_mmse = (a_bins[1] - a_bins[0]) / 3
+        width_moca = (c_bins[1] - d_bins[0]) / 3
 
         axs[0, 0].set_title('MMSE Distribution')
         axs[0, 0].bar(a_bins[:-1], a_heights, width=width_mmse, facecolor='orange');
-        axs[0, 0].bar(b_bins[:-1]+width_mmse, b_heights, width=width_mmse, facecolor='red');
+        axs[0, 0].bar(b_bins[:-1] + width_mmse, b_heights, width=width_mmse, facecolor='red');
         colors = {'MMSE_PRE': 'orange', 'MMSE_POST': 'red'}
         labels = list(colors.keys())
         handles = [plt.Rectangle((0, 0), 1, 1, color=colors[label]) for label in labels]
@@ -34,7 +63,7 @@ class UtilityMethods:
 
         axs[0, 1].set_title('MOCA Distribution')
         axs[0, 1].bar(c_bins[:-1], c_heights, width=width_moca, facecolor='lightgreen');
-        axs[0, 1].bar(d_bins[:-1]+width_moca, d_heights, width=width_moca, facecolor='green');
+        axs[0, 1].bar(d_bins[:-1] + width_moca, d_heights, width=width_moca, facecolor='green');
         colors = {'MOCA_PRE': 'lightgreen', 'MOCA_POST': 'green'}
         labels = list(colors.keys())
         handles = [plt.Rectangle((0, 0), 1, 1, color=colors[label]) for label in labels]
@@ -50,9 +79,9 @@ class UtilityMethods:
                                                                       'No Cog. Imp.']).set_index('Institution')
         # dfMOCA = pd.DataFrame([['MOCA (severity)', 20, 2, 3.2, 4.8],
         df_moca = pd.DataFrame([['MOCA (severity) \n Ziad(2005)', 19, 2, 4.2, 4.8],
-                               ['MOCA (cut-off)', 0, 0, 26, 4]], columns=[' ',
-                                                                          'AD', 'AD /\ MCI', 'MCI',
-                                                                          'Norm. Contr.']).set_index(' ')
+                                ['MOCA (cut-off)', 0, 0, 26, 4]], columns=[' ',
+                                                                           'AD', 'AD /\ MCI', 'MCI',
+                                                                           'Norm. Contr.']).set_index(' ')
         plt.figtext(0.5, 0.5, 'Class Label Differention by institution', ha="center", va="top", fontsize=16)
         plt.subplots_adjust(hspace=0.5)
         axs[1, 0].set_title('MMSE Differentiation')
